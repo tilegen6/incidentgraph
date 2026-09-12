@@ -20,4 +20,4 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=build --chown=node:node /workspace /workspace
 USER node
 EXPOSE 3100
-CMD ["npm", "run", "start", "-w", "@incidentgraph/web"]
+CMD ["npm", "exec", "-w", "@incidentgraph/web", "--", "next", "start", "-H", "0.0.0.0", "-p", "3100"]

@@ -5,6 +5,9 @@ import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { access, mkdir } from 'node:fs/promises';
 import EmbeddedPostgres from 'embedded-postgres';
+import { randomBytes } from 'node:crypto';
+process.env.ADMIN_PASSWORD = randomBytes(32).toString('base64url');
+process.env.DEMO_MODE = 'false';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const databaseDir = fileURLToPath(new URL('../../.data/postgres-verification', import.meta.url));

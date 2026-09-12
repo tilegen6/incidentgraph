@@ -4,12 +4,10 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: incidentgraph
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-incidentgraph-local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run npm run setup first}
       POSTGRES_DB: incidentgraph
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    ports:
-      - '127.0.0.1:5432:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U incidentgraph -d incidentgraph']
       interval: 5s
@@ -31,18 +29,18 @@ services:
       dockerfile: infra/docker/api.Dockerfile
     environment:
       PORT: 4100
+      HOST: 0.0.0.0
+      DEMO_MODE: 'false'
       STORAGE_MODE: postgres
-      DATABASE_URL: postgresql://incidentgraph:${POSTGRES_PASSWORD:-incidentgraph-local}@postgres:5432/incidentgraph
+      DATABASE_URL: postgresql://incidentgraph:${POSTGRES_PASSWORD:?Run npm run setup first}@postgres:5432/incidentgraph
       REDIS_URL: redis://redis:6379
       WEB_ORIGIN: http://localhost:3100
-      SESSION_SECRET: ${SESSION_SECRET:-local-demo-only-replace-with-32-characters}
-      DEMO_PASSWORD: ${DEMO_PASSWORD:-investigate-demo}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@incidentgraph.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Run npm run setup first}
       NODE_ENV: development
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-    ports:
-      - '127.0.0.1:4100:4100'
     healthcheck:
       test:
         [

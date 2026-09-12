@@ -39,7 +39,7 @@ IncidentGraph places telemetry on a shared timeline, uses service dependencies t
 - Distributed trace waterfall, nested spans, attributes, longest-span highlighting, and database-wait insight.
 - Deployment history and a correlation explanation.
 - Global search and Ctrl/Cmd+K command palette.
-- Demo authentication, HTTP-only signed sessions, validation, rate limits, origin checks, and structured request logs.
+- Private-by-default access, revocable HTTP-only sessions, validation, bounded rate limits, CSRF checks, nonce-based CSP, and sanitized request logs.
 - Dark responsive UI, locally bundled fonts, keyboard controls, focus management, loading/error/empty states.
 
 ## Architecture
@@ -134,17 +134,20 @@ npm run db:generate
 npm run dev
 ```
 
-Open [the product](http://localhost:3100), [the workspace](http://localhost:3100/app/overview), or [the main investigation](http://localhost:3100/app/incidents/INC-1042). The API runs at `http://localhost:4100` and the frontend proxies `/api` to it. No `.env` is required for the default demo.
+Open [the product](http://localhost:3100), [the workspace](http://localhost:3100/app/overview), or [the main investigation](http://localhost:3100/app/incidents/INC-1042). The API runs at `http://localhost:4100` and the frontend proxies `/api` to it. Both bind to loopback by default.
+
+`npm run dev` first runs an idempotent local setup that creates unique credentials in the ignored `.env` and `apps/api/.env` files. Existing files are preserved. Read `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `apps/api/.env` to sign in; credentials are never printed to the terminal or prefilled in private mode. All telemetry reads and writes require a session. The landing and architecture pages remain public.
 
 Demo changes persist in `apps/api/.data/snapshot.json` when launched with `npm run dev`. Set `DEMO_DATA_PATH` to choose a different location. Only reset that file if you intend to discard local demo changes.
 
 ### PostgreSQL + Redis with Docker
 
 ```sh
+npm run setup
 docker compose up --build
 ```
 
-The API waits for database health, applies the checked-in migration, and seeds idempotently. Open `http://localhost:3100`. Postgres and Redis use named volumes. Stop with `docker compose down`; keep volumes to retain data. The default Compose configuration is explicitly for local HTTP demo use.
+The API waits for database health, applies the checked-in migration, and seeds idempotently. Open `http://localhost:3100` and sign in using the credentials in the root `.env`. Only the frontend port is published, bound to loopback; PostgreSQL, Redis and the API remain inside the Docker network. Postgres and Redis use named volumes. Stop with `docker compose down`; keep volumes to retain data. Compose is for local HTTP use; it is not an internet-facing deployment configuration.
 
 To run the API against your own local PostgreSQL, set `STORAGE_MODE=postgres` and `DATABASE_URL`, then run:
 
@@ -153,7 +156,7 @@ npx prisma migrate deploy --schema apps/api/prisma/schema.prisma
 npm run dev
 ```
 
-See `.env.example` for values. API `.env` belongs in `apps/api/` (or export the variables); `API_URL` can be set in `apps/web/.env.local`. For production, use HTTPS, set `NODE_ENV=production`, supply unique `SESSION_SECRET` and `DEMO_PASSWORD`, restrict `WEB_ORIGIN`, and configure a real identity provider before admitting non-demo users. The application refuses default credentials/secrets in production mode. Build-time `API_URL` determines the web reverse-proxy destination.
+See `.env.example` for variable names. API `.env` belongs in `apps/api/` (or export the variables); `API_URL` can be set in `apps/web/.env.local`. For a remote installation, use HTTPS, `NODE_ENV=production`, `DEMO_MODE=false`, a unique `ADMIN_PASSWORD`, and an exact HTTPS `WEB_ORIGIN`. Insecure remote origins are rejected. Build-time `API_URL` determines the web reverse-proxy destination. See [Security](SECURITY.md) for deployment boundaries, private storage, and the single-account limitation.
 
 ### Production build
 
@@ -164,14 +167,20 @@ npm run start -w @incidentgraph/api
 npm run start -w @incidentgraph/web
 ```
 
-## Demo Credentials
+## Explicit Synthetic Demo
+
+For a portfolio walkthrough with public, prefilled demo credentials, run:
+
+```sh
+npm run demo
+```
 
 ```text
 Email:    demo@incidentgraph.dev
 Password: investigate-demo
 ```
 
-The login screen prefills these for the local demo. Browsing is public; creating/updating incidents, re-analysis, ingestion and notes require a session. Replace the password via `DEMO_PASSWORD` when deploying privately.
+This explicitly selects `DEMO_MODE=true` and uses a separate `apps/api/.data/public-demo.json` dataset. It cannot connect to PostgreSQL or read the private snapshot. All API reads still require login, but the shared demo password is public knowledge. Never enter confidential notes, credentials or real telemetry in this mode. The default `npm run dev` uses private mode instead.
 
 ## Testing
 
@@ -186,6 +195,8 @@ npm run test:postgres
 ```
 
 Unit/service tests cover the PostgreSQL → payment → order → gateway cascade, ordering independence, missing evidence, cycle safety, late anomalies, isolation, deduplication, bounded windows, input validation, query semantics, persistence, state changes, concurrent batch admission, and session tampering.
+
+Security tests cover anonymous access to every telemetry endpoint, session revocation/rotation/expiry, CSRF and content-type enforcement, oversized and malformed bodies, request-log redaction, password-guess throttling, forwarding-header spoofing, unsafe configuration, and bounded in-memory state. Browser checks exercise CSP script blocking, escaped user content, and logout. CI also audits dependencies and scans the complete Git history with checksum-pinned Gitleaks. See the [security review](docs/security-review.md).
 
 Playwright starts isolated test servers on 3101/4101 with its own `.data/e2e.json` and `.next-e2e` output. It verifies REST errors, sign-in, investigation actions, notes, logs-to-traces navigation, command palette, incident creation, filtering, and mobile overflow. It does not change the interactive demo’s records.
 

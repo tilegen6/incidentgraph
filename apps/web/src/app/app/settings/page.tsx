@@ -81,8 +81,9 @@ export default function Settings() {
                 setBusy(true);
                 try {
                   await api('/auth/logout', { method: 'POST' });
-                  client.removeQueries({ queryKey: ['session'] });
-                  notify('Signed out. You can still explore telemetry.');
+                  await client.cancelQueries();
+                  client.clear();
+                  window.location.replace('/login');
                 } catch (e) {
                   notify((e as Error).message);
                 } finally {

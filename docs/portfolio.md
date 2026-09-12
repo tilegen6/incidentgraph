@@ -12,7 +12,7 @@ Next.js · React · TypeScript · NestJS · PostgreSQL · Prisma · Redis · Doc
 
 - Built a full-stack incident investigation MVP connecting service dependency graphs, correlated anomaly timelines, logs, metrics, and distributed trace waterfalls.
 - Implemented deterministic root cause ranking using temporal evidence, reverse graph traversal, anomaly magnitude, and propagation order, with inspectable scoring factors.
-- Added transactional PostgreSQL persistence, idempotent demo seeding, signed HTTP-only sessions, input validation, and concurrency-safe incident updates within one API process.
+- Added transactional PostgreSQL persistence, idempotent demo seeding, revocable HTTP-only sessions, input validation, and concurrency-safe incident updates within one API process.
 - Established unit, integration, and browser verification covering analysis behavior, database persistence, investigation workflows, responsive layouts, and automated accessibility checks.
 
 ## Резюме — русский

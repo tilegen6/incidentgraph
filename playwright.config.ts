@@ -6,6 +6,7 @@ export default defineConfig({
   timeout: 45000,
   use: {
     baseURL: 'http://localhost:3101',
+    extraHTTPHeaders: { 'X-IncidentGraph-Request': '1' },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -26,13 +27,17 @@ export default defineConfig({
         PORT: '4101',
         WEB_ORIGIN: 'http://localhost:3101',
         STORAGE_MODE: 'demo',
+        DEMO_MODE: 'false',
+        ADMIN_EMAIL: 'admin@incidentgraph.local',
+        ADMIN_PASSWORD: 'browser-test-workspace-only',
         DEMO_DATA_PATH: '.data/e2e.json',
       },
     },
     {
-      command: 'npm exec -w @incidentgraph/web -- next dev -p 3101',
+      command:
+        'npm exec -w @incidentgraph/web -- next build && npm exec -w @incidentgraph/web -- next start -H 127.0.0.1 -p 3101',
       url: 'http://localhost:3101',
-      timeout: 90000,
+      timeout: 180000,
       reuseExistingServer: false,
       env: {
         API_URL: 'http://localhost:4101',

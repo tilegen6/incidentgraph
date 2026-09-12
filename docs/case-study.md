@@ -36,7 +36,7 @@ The repository includes engine/service tests, an isolated Playwright suite, real
 
 An audit identified a lost-update race between concurrent incident changes. Read, transformation, and persistence now execute together per incident; a regression test checks that simultaneous owner, status, and analysis updates survive and persist.
 
-The API validates inputs, limits request bodies and writes, checks origins, and signs HTTP-only demo sessions. These controls do not turn the single-user demonstration into enterprise identity or authorization. Real customer telemetry must not be uploaded to a publicly readable demo.
+The API validates inputs, limits request bodies and writes, checks origins, and issues revocable HTTP-only sessions. These controls do not turn the single-user demonstration into enterprise identity or authorization. The shared synthetic demo must never contain confidential information. See SECURITY.md for the private mode and deployment boundaries.
 
 Docker Compose is provided for PostgreSQL, Redis, API, and frontend. Native PostgreSQL integration has been exercised; Compose itself was not executed on the development host because Docker was unavailable. CI results are visible in the repository's Actions tab.
 

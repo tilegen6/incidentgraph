@@ -15,7 +15,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
   annotationSchema,
@@ -26,7 +26,7 @@ import {
 } from '../../../packages/shared/src';
 import { Storage } from './storage';
 import { IncidentService } from './incident-service';
-import { SessionGuard, issueSession, validSession } from './auth';
+import { SessionGuard, Public, issueSession, validSession, revokeSession } from './auth';
 import { config } from './config';
 import { ReadCache } from './cache';
 import { InProcessEventProcessor } from './event-processor';
@@ -59,35 +59,48 @@ export class ApiController {
     @Inject(ReadCache) private readonly cache: ReadCache,
     @Inject(InProcessEventProcessor) private readonly processor: InProcessEventProcessor,
   ) {}
-  @Get('health') health() {
-    return { status: 'ok', storage: config.STORAGE_MODE, version: '1.0.0' };
+  @Public() @Get('health') health() {
+    return { status: 'ok', storage: config.STORAGE_MODE, version: '1.0.1' };
   }
-  @Post('auth/login') @HttpCode(200) login(
+  @Public() @Get('auth/config') authConfig() {
+    return { demoMode: config.DEMO_MODE };
+  }
+  @Public() @Post('auth/login') @HttpCode(200) login(
     @Body() body: unknown,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const input = parse(z.object({ email: z.string().email(), password: z.string() }), body);
-    const a = Buffer.from(input.password),
-      b = Buffer.from(config.DEMO_PASSWORD);
-    if (input.email !== 'demo@incidentgraph.dev' || a.length !== b.length || !timingSafeEqual(a, b))
+    const input = parse(
+      z.object({ email: z.string().email().max(254), password: z.string().max(256) }),
+      body,
+    );
+    const a = createHash('sha256').update(input.password).digest(),
+      b = createHash('sha256').update(config.ADMIN_PASSWORD).digest();
+    const validPassword = timingSafeEqual(a, b);
+    if (input.email !== config.ADMIN_EMAIL || !validPassword)
       throw new UnauthorizedException('Invalid email or password');
+    revokeSession((req.cookies as Record<string, unknown> | undefined)?.ig_session);
     res.cookie('ig_session', issueSession(), {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'strict',
       secure: config.NODE_ENV === 'production',
-      maxAge: 86400000,
+      maxAge: 8 * 60 * 60 * 1000,
       path: '/',
     });
     return { name: 'Alex Morgan', email: input.email };
   }
-  @Post('auth/logout') @HttpCode(200) logout(@Res({ passthrough: true }) res: Response) {
+  @Post('auth/logout') @HttpCode(200) logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    revokeSession((req.cookies as Record<string, unknown> | undefined)?.ig_session);
     res.clearCookie('ig_session', { path: '/' });
     return { ok: true };
   }
-  @Get('auth/me') me(@Req() req: Request, @Res() res: Response) {
+  @Public() @Get('auth/me') me(@Req() req: Request, @Res() res: Response) {
     return res.json(
       validSession((req.cookies as Record<string, unknown> | undefined)?.ig_session)
-        ? { name: 'Alex Morgan', email: 'demo@incidentgraph.dev' }
+        ? { name: 'Alex Morgan', email: config.ADMIN_EMAIL }
         : null,
     );
   }
@@ -106,6 +119,7 @@ export class ApiController {
       annotations: d.annotations.filter((a) => incidents.some((i) => i.id === a.incidentId)),
       demoTime: d.demoTime,
       storageMode: config.STORAGE_MODE,
+      demoMode: config.DEMO_MODE,
       serviceTrends: Object.fromEntries(
         d.services
           .filter((s) => ids.has(s.id))
@@ -217,7 +231,7 @@ export class ApiController {
   }
   @Get('metrics') metrics(@Query() query: unknown) {
     const q = parse(querySchema, query);
-    return this.cache.remember(`metrics:${JSON.stringify(q)}`, () => {
+    return this.cache.remember(`metrics:${q.environment}:${q.service}:${q.range}`, () => {
       const d = this.storage.snapshot();
       const minutes = { '15m': 15, '1h': 60, '6h': 360, '24h': 1440 }[q.range];
       const start = Date.parse(d.demoTime) - minutes * 60000;

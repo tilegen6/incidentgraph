@@ -1,6 +1,6 @@
 # Three-minute demo
 
-Run `npm ci`, `npm run db:generate`, and `npm run dev` from the repository root. Open [the workspace](http://localhost:3100/app/overview). No external account or paid service is required. This is synthetic demo telemetry, not a connection to a production system.
+Run `npm ci`, `npm run db:generate`, and `npm run dev` from the repository root. Open [the workspace](http://localhost:3100/app/overview). Sign in using the unique credentials generated in the ignored `apps/api/.env` file. For a shared synthetic walkthrough with prefilled public credentials, use `npm run demo` instead. No external account or paid service is required. This is synthetic demo telemetry, not a connection to a production system.
 
 ## 0:00 — Recognize the incident
 
@@ -22,7 +22,7 @@ Open Logs, filter to `payment-service`, and run `timeout OR connection`. Expand 
 
 ## 2:00 — Record the investigation
 
-Sign in at [the demo login](http://localhost:3100/login) using the prefilled credentials. Return to `INC-1042`, change its status, and add a note in Activity. Reload to demonstrate server-side persistence.
+Sign in at [the demo login](http://localhost:3100/login) using the generated local credentials (or the prefilled credentials in explicit demo mode). Return to `INC-1042`, change its status, and add a note in Activity. Reload to demonstrate server-side persistence.
 
 Use Ctrl/Cmd+K to search for an incident or switch views. Select Staging to demonstrate environment isolation and the empty incident state.
 

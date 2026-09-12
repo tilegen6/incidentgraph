@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { parseEnv } from 'node:util';
+const credentials = parseEnv(await readFile(new URL('../../.env', import.meta.url), 'utf8'));
 
 // Runs only against the disposable Compose stack, never a user-supplied deployment.
 const base = 'http://localhost:3100';
@@ -11,6 +13,7 @@ async function api(path, method = 'GET', data) {
     headers: {
       'Content-Type': 'application/json',
       Origin: base,
+      'X-IncidentGraph-Request': '1',
       ...(cookie ? { Cookie: cookie } : {}),
     },
     ...(data ? { body: JSON.stringify(data) } : {}),
@@ -21,6 +24,13 @@ async function api(path, method = 'GET', data) {
 }
 const health = await (await api('/health')).json();
 assert.equal(health.storage, 'postgres');
+assert.equal((await fetch(`${base}/api/bootstrap`)).status, 401);
+const login = await api('/auth/login', 'POST', {
+  email: credentials.ADMIN_EMAIL,
+  password: credentials.ADMIN_PASSWORD,
+});
+cookie = login.headers.get('set-cookie')?.split(';')[0];
+assert.ok(cookie?.startsWith('ig_session='));
 
 if (process.argv.includes('--verify-persistence')) {
   const { id } = JSON.parse(await readFile(stateFile, 'utf8'));
@@ -42,13 +52,7 @@ if (process.argv.includes('--verify-persistence')) {
   assert.equal(workspace.services.length, 11);
   const metrics = await (await api('/metrics?service=postgres-main')).json();
   assert.ok(metrics.length > 0);
-  assert.equal(await (await api('/auth/me')).json(), null);
-  const login = await api('/auth/login', 'POST', {
-    email: 'demo@incidentgraph.dev',
-    password: 'investigate-demo',
-  });
-  cookie = login.headers.get('set-cookie')?.split(';')[0];
-  assert.ok(cookie?.startsWith('ig_session='));
+  assert.equal((await (await api('/auth/me')).json()).email, credentials.ADMIN_EMAIL);
   const incident = await (
     await api('/incidents', 'POST', {
       title: 'Docker Compose persistence verification',

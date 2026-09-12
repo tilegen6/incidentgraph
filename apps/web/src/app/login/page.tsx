@@ -3,13 +3,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Network, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Network, ShieldCheck } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Logo } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/utils';
 export default function Login() {
   const router = useRouter();
   const client = useQueryClient();
+  const { data: authConfig } = useQuery({
+    queryKey: ['auth-config'],
+    queryFn: () => api<{ demoMode: boolean }>('/auth/config'),
+  });
+  const demo = authConfig?.demoMode === true;
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -40,8 +46,8 @@ export default function Login() {
           <Network size={27} />
         </span>
         <h1>Your next investigation starts here.</h1>
-        <p>Sign in to declare incidents, update status, and share investigation notes.</p>
-        <form className="form-stack" onSubmit={submit}>
+        <p>Sign in to access your workspace and investigation data.</p>
+        <form key={String(demo)} className="form-stack" onSubmit={submit}>
           <label>
             Email address
             <input
@@ -49,7 +55,7 @@ export default function Login() {
               type="email"
               required
               autoComplete="username"
-              defaultValue="demo@incidentgraph.dev"
+              defaultValue={demo ? 'demo@incidentgraph.dev' : ''}
             />
           </label>
           <label>
@@ -59,7 +65,7 @@ export default function Login() {
               type="password"
               required
               autoComplete="current-password"
-              defaultValue="investigate-demo"
+              defaultValue={demo ? 'investigate-demo' : ''}
             />
           </label>
           {error && (
@@ -68,18 +74,18 @@ export default function Login() {
             </p>
           )}
           <Button variant="default" type="submit" disabled={busy}>
-            {busy ? 'Signing in…' : 'Enter demo workspace'}
+            {busy ? 'Signing in…' : demo ? 'Enter demo workspace' : 'Sign in'}
             <ArrowRight size={15} />
           </Button>
         </form>
         <div className="login-note">
           <ShieldCheck size={15} />
-          <span>Demo credentials are prefilled. No account needed.</span>
+          <span>
+            {demo
+              ? 'Shared synthetic demo. Do not enter confidential information.'
+              : 'Private workspace. Use the credentials provided by your administrator.'}
+          </span>
         </div>
-        <Link href="/app/overview" className="back-link">
-          <ArrowLeft size={13} />
-          Explore without signing in
-        </Link>
       </div>
       <footer>INCIDENTGRAPH · BUILT FOR THE MOMENT IT MATTERS</footer>
     </main>

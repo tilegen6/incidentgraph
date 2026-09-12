@@ -1,5 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+async function signIn(page: Page) {
+  await page.goto('/login');
+  await page.getByLabel('Email address').fill('admin@incidentgraph.local');
+  await page.getByLabel('Password', { exact: true }).fill('browser-test-workspace-only');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'System overview' })).toBeVisible();
+}
 const reviewRoutes = [
   '/',
   '/architecture',
@@ -18,6 +25,10 @@ const reviewRoutes = [
 test('API rejects unauthorized writes and invalid filters', async ({ request }) => {
   const write = await request.post('/api/incidents', { data: { title: 'Untrusted incident' } });
   expect(write.status()).toBe(401);
+  expect((await request.get('/api/bootstrap')).status()).toBe(401);
+  await request.post('/api/auth/login', {
+    data: { email: 'admin@incidentgraph.local', password: 'browser-test-workspace-only' },
+  });
   expect((await request.get('/api/logs?page=-1')).status()).toBe(400);
   expect((await request.get('/api/incidents/missing')).status()).toBe(404);
   const staging = await request.get('/api/bootstrap?environment=staging');
@@ -26,8 +37,7 @@ test('API rejects unauthorized writes and invalid filters', async ({ request }) 
 test('investigation, logs, graph, and keyboard navigation', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Enter demo workspace' }).click();
+  await signIn(page);
   await expect(page.getByRole('heading', { name: 'System overview' })).toBeVisible();
   await expect(page.locator('.react-flow__node').first()).toBeVisible();
   await expect(page.locator('.react-flow__edge-path').first()).toHaveAttribute('d', /^M/);
@@ -81,8 +91,7 @@ test('investigation, logs, graph, and keyboard navigation', async ({ page }) => 
   expect(errors).toEqual([]);
 });
 test('declare an incident, filter and find it again', async ({ page }) => {
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Enter demo workspace' }).click();
+  await signIn(page);
   await page.getByRole('button', { name: 'Declare incident', exact: true }).click();
   await page.getByLabel('Incident title').fill('Checkout timeout verification');
   await page.getByLabel('payment-service', { exact: true }).check();
@@ -94,6 +103,7 @@ test('declare an incident, filter and find it again', async ({ page }) => {
 });
 test('public pages and mobile layouts have no page overflow', async ({ page }) => {
   test.setTimeout(120000);
+  await signIn(page);
   for (const path of reviewRoutes) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(path);
@@ -120,6 +130,7 @@ test('captures the public landing page', async ({ page }) => {
 });
 
 test('service inspection, global search and metric filters use matching data', async ({ page }) => {
+  await signIn(page);
   await page.goto('/app/services');
   await page.getByLabel('Search services').fill('postgres');
   await page.getByRole('button', { name: 'Inspect postgres-main', exact: true }).click();
@@ -142,6 +153,7 @@ test('service inspection, global search and metric filters use matching data', a
 
 test('all primary screens pass automated WCAG A/AA checks', async ({ page }) => {
   test.setTimeout(180000);
+  await signIn(page);
   for (const path of reviewRoutes) {
     await page.goto(path);
     await expect(page.locator('h1')).toBeVisible();
@@ -163,6 +175,7 @@ test('primary routes and their internal links load without browser errors', asyn
   request,
 }) => {
   test.setTimeout(180000);
+  await signIn(page);
   const failures: string[] = [];
   const links = new Set<string>();
   page.on('pageerror', (error) => failures.push(error.message));
@@ -187,4 +200,47 @@ test('primary routes and their internal links load without browser errors', asyn
     expect(response.ok(), `Broken internal link: ${href}`).toBe(true);
   }
   expect(failures).toEqual([]);
+});
+
+test('private login, script injection defenses and logout protect workspace data', async ({
+  page,
+}) => {
+  // Inject into the HTML parser, outside Playwright's privileged evaluate context.
+  await page.route('**/login', async (route) => {
+    const response = await route.fetch();
+    const body = (await response.text()).replace(
+      '</body>',
+      "<script>document.body.dataset.securityProbe = 'executed'</script></body>",
+    );
+    await route.fulfill({ response, body });
+  });
+  const response = await page.goto('/login');
+  await expect(page.getByLabel('Password', { exact: true })).toHaveValue('');
+  const headers = response!.headers();
+  expect(headers['content-security-policy']).toContain("'strict-dynamic'");
+  expect(headers['content-security-policy']).not.toContain("'unsafe-eval'");
+  expect(
+    headers['content-security-policy']
+      ?.split(';')
+      .find((part) => part.trim().startsWith('script-src')),
+  ).not.toContain("'unsafe-inline'");
+  expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  expect(headers['x-content-type-options']).toBe('nosniff');
+  expect(headers['referrer-policy']).toBe('no-referrer');
+  expect(await page.locator('body').getAttribute('data-security-probe')).toBeNull();
+  await page.unroute('**/login');
+  await signIn(page);
+  await page.goto('/app/incidents/INC-1042');
+  await page.getByRole('button', { name: /^Activity/ }).click();
+  const payload = '<img src=x onerror="document.body.dataset.securityProbe=1">';
+  await page.getByLabel('Add an investigation note').fill(payload);
+  await page.getByRole('button', { name: 'Add note', exact: true }).click();
+  await expect(page.getByText(payload, { exact: true })).toBeVisible();
+  expect(await page.locator('img[src="x"]').count()).toBe(0);
+  await page.goto('/app/settings');
+  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto('/app/incidents/INC-1042');
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByText('Payment failures', { exact: true })).toHaveCount(0);
 });

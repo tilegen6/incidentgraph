@@ -22,9 +22,22 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     credentials: 'include',
     ...options,
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-IncidentGraph-Request': '1',
+      ...options?.headers,
+    },
   });
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/app')
+    ) {
+      // Reload clears all in-memory query data, including after session expiry.
+      window.location.replace('/login');
+    }
     const error = (await response
       .json()
       .catch(() => ({ message: 'Unable to reach the server' }))) as { message?: string };

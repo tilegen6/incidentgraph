@@ -2,6 +2,7 @@ import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { Annotation, Incident, IncidentEvent, Snapshot } from '../../../packages/shared/src';
 import { createDemoSnapshot } from '../../../packages/shared/src/demo';
 import { config } from './config';
@@ -122,7 +123,11 @@ export async function seedDatabase(db: PrismaClient, data: Snapshot): Promise<vo
 export class Storage implements TelemetryRepository, OnModuleInit, OnModuleDestroy {
   private data: Snapshot = createDemoSnapshot();
   private db: PrismaClient | null = null;
-  private readonly path = resolve(process.env.DEMO_DATA_PATH ?? '.data/snapshot.json');
+  private readonly path = resolve(
+    config.DEMO_MODE
+      ? '.data/public-demo.json'
+      : (process.env.DEMO_DATA_PATH ?? '.data/snapshot.json'),
+  );
   private writes: Promise<void> = Promise.resolve();
   async onModuleInit() {
     if (config.STORAGE_MODE === 'postgres') {
@@ -181,9 +186,10 @@ export class Storage implements TelemetryRepository, OnModuleInit, OnModuleDestr
     return this.data;
   }
   private async persist() {
-    await mkdir(dirname(this.path), { recursive: true });
-    await writeFile(`${this.path}.tmp`, JSON.stringify(this.data));
-    await rename(`${this.path}.tmp`, this.path);
+    await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
+    const temporary = `${this.path}.${randomUUID()}.tmp`;
+    await writeFile(temporary, JSON.stringify(this.data), { mode: 0o600, flag: 'wx' });
+    await rename(temporary, this.path);
   }
   private enqueue(task: () => Promise<void>) {
     const next = this.writes.then(task);

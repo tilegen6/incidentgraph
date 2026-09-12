@@ -1,6 +1,6 @@
 {
   "name": "incidentgraph",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Incident investigation with correlated telemetry and explainable root cause analysis.",
   "license": "MIT",
@@ -17,6 +17,9 @@
     "packages/*"
   ],
   "scripts": {
+    "setup": "node infra/scripts/setup-local.mjs",
+    "predev": "npm run setup",
+    "demo": "node infra/scripts/start-demo.mjs",
     "dev": "concurrently -k -n api,web -c cyan,green \"npm run dev -w @incidentgraph/api\" \"npm run dev -w @incidentgraph/web\"",
     "build": "npm run db:generate && npm run build -w @incidentgraph/api && npm run build -w @incidentgraph/web",
     "typecheck": "tsc --noEmit -p packages/shared && tsc --noEmit -p apps/api && tsc --noEmit -p apps/web",
