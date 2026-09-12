@@ -52,7 +52,7 @@ jobs:
       - name: Restart the API and verify persistence
         run: |
           docker compose restart api
-          docker compose up --detach --wait --wait-timeout 120
+          docker compose up --detach --no-recreate --wait --wait-timeout 120
           node infra/scripts/smoke-compose.mjs --verify-persistence
       - name: Container logs on failure
         if: failure()
