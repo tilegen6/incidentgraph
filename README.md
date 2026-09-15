@@ -7,11 +7,13 @@
 
 A full-stack portfolio MVP: Next.js, NestJS, PostgreSQL, Prisma, Redis, React Flow, Recharts, and strict TypeScript. Includes a public product page, architecture walkthrough, and an immediately usable incident workspace.
 
+**[Open the live portfolio demo →](https://incidentgraph-six.vercel.app)** — choose “Enter demo workspace.” Only synthetic data is included; your edits stay in your browser tab.
+
 ![IncidentGraph system overview](docs/screenshots/overview.png)
 
 [Quick start](#running-locally) · [Three-minute demo](docs/demo-walkthrough.md) · [Engineering case study](docs/case-study.md) · [Architecture](#architecture) · [Verification](#testing)
 
-> **Demo scope:** the included telemetry is synthetic and reproducible. This repository does not collect data from a real business. The ingestion endpoint processes supplied anomaly batches; realtime collection and streaming are future work. No hosted demo is currently published. All localhost links require running the project.
+> **Demo scope:** the included telemetry is synthetic and reproducible. This repository does not collect data from a real business. The ingestion endpoint in the full-stack version processes supplied anomaly batches; realtime collection and streaming are future work. The [Vercel portfolio edition](docs/vercel.md) runs the investigation workspace in each visitor's browser with isolated, temporary edits. All localhost links require running the project.
 
 ## Engineering Highlights
 
@@ -71,7 +73,7 @@ tests/                     Engine, service, session and browser tests
 docs/                      API guide, ingestion example, design system, screenshots
 ```
 
-`Storage` implements the telemetry repository contract. PostgreSQL stores normalized incident relations and indexed telemetry metadata, with JSON payloads for extensible attributes. The MVP loads a bounded single-project read snapshot; writes commit to PostgreSQL before updating that snapshot. The no-infrastructure demo uses an atomic server-side JSON file, not browser local storage. Redis caches metric queries for 15 seconds when configured and gracefully falls back if unavailable.
+`Storage` implements the telemetry repository contract. PostgreSQL stores normalized incident relations and indexed telemetry metadata, with JSON payloads for extensible attributes. The MVP loads a bounded single-project read snapshot; writes commit to PostgreSQL before updating that snapshot. The local `npm run demo` mode uses an atomic server-side JSON file. Redis caches metric queries for 15 seconds when configured and gracefully falls back if unavailable. The separate Vercel portfolio edition uses per-tab `sessionStorage` and shared query/analysis functions; it does not host the NestJS API, PostgreSQL, Redis or ingestion endpoint.
 
 ## Root Cause Algorithm
 

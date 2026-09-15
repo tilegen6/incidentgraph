@@ -24,6 +24,7 @@ const config: NextConfig = {
     ];
   },
   async rewrites() {
+    if (process.env.NEXT_PUBLIC_PORTFOLIO_DEMO === 'true') return [];
     return [
       {
         source: '/api/:path*',

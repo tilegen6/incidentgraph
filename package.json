@@ -26,6 +26,7 @@
     "lint": "eslint apps packages tests",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:portfolio": "node infra/scripts/run-portfolio-tests.mjs",
     "db:generate": "prisma generate --schema apps/api/prisma/schema.prisma",
     "db:push": "prisma db push --schema apps/api/prisma/schema.prisma",
     "db:seed": "tsx apps/api/prisma/seed.ts",

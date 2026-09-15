@@ -211,6 +211,11 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="main-content" className="main-content">
+          {process.env.NEXT_PUBLIC_PORTFOLIO_DEMO === 'true' && (
+            <p className="info-banner">
+              Portfolio demo · Fictional data · Edits stay in this tab and reset on sign out
+            </p>
+          )}
           {children}
         </main>
         <footer className="workspace-footer">

@@ -19,6 +19,14 @@ export function dateLabel(timestamp: string) {
   });
 }
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  if (process.env.NEXT_PUBLIC_PORTFOLIO_DEMO === 'true') {
+    if (typeof window === 'undefined')
+      throw new Error('The portfolio workspace runs in your browser.');
+    portfolioClient ??= import('./portfolio-client').then(({ createPortfolioClient }) =>
+      createPortfolioClient(window.sessionStorage),
+    );
+    return (await portfolioClient)<T>(path, options);
+  }
   const response = await fetch(`/api${path}`, {
     credentials: 'include',
     ...options,
@@ -45,6 +53,8 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   }
   return response.json() as Promise<T>;
 }
+let portfolioClient:
+  Promise<ReturnType<typeof import('./portfolio-client').createPortfolioClient>> | undefined;
 export function initials(name: string) {
   return name
     .split(' ')

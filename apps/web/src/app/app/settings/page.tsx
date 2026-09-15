@@ -48,9 +48,11 @@ export default function Settings() {
             <div className="settings-row">
               <span>Storage backend</span>
               <strong>
-                {data?.storageMode === 'postgres'
-                  ? 'PostgreSQL / Prisma'
-                  : 'Server-side demo snapshot'}
+                {data?.storageMode === 'browser'
+                  ? 'This browser tab only'
+                  : data?.storageMode === 'postgres'
+                    ? 'PostgreSQL / Prisma'
+                    : 'Server-side demo snapshot'}
               </strong>
             </div>
             <div className="settings-row">
@@ -58,8 +60,9 @@ export default function Settings() {
               <strong>Sep 13, 2026 · 14:50 UTC</strong>
             </div>
             <p className="muted">
-              Demo telemetry is a reproducible snapshot. Incident changes and notes persist across
-              restarts.
+              {data?.storageMode === 'browser'
+                ? 'Synthetic portfolio demo. Changes survive page reloads in this tab and reset on sign out or when the tab closes. Do not enter confidential data.'
+                : 'Demo telemetry is a reproducible snapshot. Incident changes and notes persist across restarts.'}
             </p>
           </div>
         </Panel>
@@ -69,7 +72,11 @@ export default function Settings() {
             <p>demo@incidentgraph.dev</p>
             <div className="info-banner">
               <Check size={16} />
-              <span>Session cookies are HTTP-only. Writes require authentication.</span>
+              <span>
+                {data?.storageMode === 'browser'
+                  ? 'Public demo access. Your edits stay in this browser tab and are not sent to a server.'
+                  : 'Session cookies are HTTP-only. Writes require authentication.'}
+              </span>
             </div>
             <Link className="button button-primary" href="/login">
               Sign in to the demo

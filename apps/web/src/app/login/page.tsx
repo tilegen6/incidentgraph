@@ -82,7 +82,9 @@ export default function Login() {
           <ShieldCheck size={15} />
           <span>
             {demo
-              ? 'Shared synthetic demo. Do not enter confidential information.'
+              ? process.env.NEXT_PUBLIC_PORTFOLIO_DEMO === 'true'
+                ? 'Public portfolio demo. Edits stay in this tab and reset on sign out. Use fictional data only.'
+                : 'Shared synthetic demo. Do not enter confidential information.'
               : 'Private workspace. Use the credentials provided by your administrator.'}
           </span>
         </div>

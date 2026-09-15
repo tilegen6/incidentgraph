@@ -10,6 +10,8 @@ Run `npm run setup` to generate unique credentials in ignored local `.env` files
 
 The optional `npm run demo` mode deliberately uses public credentials and a separate synthetic dataset. It cannot connect to PostgreSQL or use `DEMO_DATA_PATH`. Do not enter real telemetry or confidential notes in that mode.
 
+The Vercel portfolio edition is a separate public browser demo selected by `npm run build:portfolio`. Its entry form is a demonstration, not authentication: the prefilled credentials are public and there is no protected server data behind them. Only synthetic fixtures ship to the browser. Edits stay in that tab's `sessionStorage`, survive reloads, and reset on sign out or when the tab session ends. Nothing entered in the investigation UI is sent to the application's API. This mode must never be used for confidential information. It does not deploy the private NestJS API or provision a database.
+
 ## Sessions and request protection
 
 Session tokens contain 256 bits of randomness. Only their hashes and expiry times are kept in API memory. They expire after eight hours and are revoked on logout or replacement login. Restarting the API invalidates all sessions. Cookies are HTTP-only and SameSite=Strict, with Secure enabled in production. There is no reusable signing key in source control.

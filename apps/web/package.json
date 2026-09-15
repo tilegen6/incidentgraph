@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 3100",
     "build": "next build",
+    "build:portfolio": "node ../../infra/scripts/build-portfolio.mjs",
     "start": "next start -H 127.0.0.1 -p 3100"
   },
   "dependencies": {
